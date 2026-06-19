@@ -1,0 +1,10 @@
+# Phase 2 额外依赖
+# 基础：pip install -r requirements.txt
+# Phase 2：pip install -r requirements_phase2.txt
+
+easyocr>=1.7
+pyautogui>=0.9
+pygetwindow>=0.0
+opencv-python>=4.8
+pillow>=10.0
+requests>=2.30
