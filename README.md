@@ -91,6 +91,7 @@ python tools/quality_check.py               # 质量抽检
 python tools/generalization_test.py         # 泛化验证
 python tools/generalization_boundary.py     # 泛化边界测试
 python tools/cross_app_migration.py wordpad "type Hello"  # 跨应用迁移
+python tools/observe_mode.py              # 被动观察模式
 python tools/compare_multimodal.py          # 多模态世界模型对比
 python tools/verify_multimodal_fallback.py   # WM fallback 验证
 ```
