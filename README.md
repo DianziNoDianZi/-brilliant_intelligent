@@ -8,6 +8,7 @@
 Phase 1          Phase 1.5       Phase 2           Phase 3            Phase 3.5          Phase 4            Phase 5
 网格好奇心闭环    视觉+系综       桌面UI理解         双回路骨架         技能生长+内模拟     层级记忆           自主意图理解
                  不确定性分解     LLM规划+执行       快慢回路分离       跨应用泛化         跨应用迁移         分类器替代LLM
+                                        多模态世界模型（在线学习）
 ```
 
 ## 快速开始
@@ -90,6 +91,8 @@ python tools/quality_check.py               # 质量抽检
 python tools/generalization_test.py         # 泛化验证
 python tools/generalization_boundary.py     # 泛化边界测试
 python tools/cross_app_migration.py wordpad "type Hello"  # 跨应用迁移
+python tools/compare_multimodal.py          # 多模态世界模型对比
+python tools/verify_multimodal_fallback.py   # WM fallback 验证
 ```
 
 ## 项目结构

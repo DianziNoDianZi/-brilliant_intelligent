@@ -55,3 +55,7 @@
 {"timestamp": 1781917594.704357, "instruction": "add 7 and 3 then write in notepad", "plan_values": ["3", "+", "4", "=", "alt_tab", "text_area", "type:7"], "l3_template_id": "cross_app_chain", "slots": {"A": "3", "B": "4", "VALUE": "7"}, "confidence": 0.0, "success": true}
 {"timestamp": 1781917775.5608366, "instruction": "calculate 3+4", "plan_values": ["3", "+", "4", "="], "l3_template_id": "", "slots": {"A": "3", "B": "4"}, "confidence": 0.0, "success": true}
 {"timestamp": 1781917833.021648, "instruction": "type Hello World", "plan_values": ["文本编辑器", "type:Hello World"], "l3_template_id": "", "slots": {"VALUE": "Hello World"}, "confidence": 0.0, "success": true}
+{"timestamp": 1781918695.8906574, "instruction": "calculate 3+4", "plan_values": ["3", "+", "4", "="], "l3_template_id": "", "slots": {"A": "3", "B": "4"}, "confidence": 0.0, "success": true}
+{"timestamp": 1781918750.3344398, "instruction": "calculate 5+8", "plan_values": ["5", "+", "8", "="], "l3_template_id": "", "slots": {"A": "5", "B": "8"}, "confidence": 0.0, "success": true}
+{"timestamp": 1781918810.247461, "instruction": "type Fuck", "plan_values": ["文本编辑器", "type:Fuck"], "l3_template_id": "", "slots": {"VALUE": "Fuck"}, "confidence": 0.0, "success": true}
+{"timestamp": 1781918833.393269, "instruction": "type Windows", "plan_values": ["文本编辑器", "type:Windows"], "l3_template_id": "", "slots": {"VALUE": "Windows"}, "confidence": 0.0, "success": true}

@@ -220,11 +220,28 @@ def main():
             success, step_results = executor.execute_plan(final_plan, wsg, env)
             _report_execution_result(success, step_results, final_plan, env, wsg)
 
-            # Intent logging for Phase 5 classifier training
+            # Intent & multimodal logging for Phase 5
             from agent.intent_log import log_execution
+            from agent.wsg_encoder import encode_wsg
             exec_vals = plan_to_values(final_plan, wsg) if success else None
             if exec_vals:
                 log_execution(args.instruction, exec_vals, success=success)
+                # Multimodal: save (wsg_before, instruction, action, wsg_after)
+                try:
+                    wsg_after_state = env.reset()
+                    mm_record = {
+                        'feat_before': encode_wsg(wsg).tolist(),
+                        'feat_after': encode_wsg(wsg_after_state).tolist(),
+                        'instruction': args.instruction,
+                        'tokens': args.instruction.lower().split(),
+                        'action_vec': [1.0,0,0,0,0] if not any(v.startswith('type:') for v in exec_vals) else [0,1.0,0,0,0],
+                    }
+                    import json, os
+                    os.makedirs("D:/briliant_intelligent/data", exist_ok=True)
+                    with open("D:/briliant_intelligent/data/multimodal_data.json", "a") as f:
+                        f.write(json.dumps(mm_record) + "\n")
+                except Exception:
+                    pass
 
             # Dual-loop: record success for skill compilation
             if success and args.dual and fast_loop:
