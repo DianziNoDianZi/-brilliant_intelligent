@@ -232,7 +232,7 @@ class Planner:
         model: model name for Ollama, or GGUF file path for llama
     """
 
-    def __init__(self, backend="ollama", model=None):
+    def __init__(self, backend="ollama", model=None, use_classifier=False):
         self.backend_name = backend
         if backend == "llama":
             model = model or "/d/models/qwen2.5-7b-instruct-q4_k_m.gguf"
@@ -240,6 +240,55 @@ class Planner:
         else:
             model = model or "qwen2.5:7b"
             self._backend = _OllamaBackend(model)
+
+        # Phase 5: 影子模式分类器
+        self.use_classifier = use_classifier
+        self.classifier = None
+        self.shadow_consistency = []  # 跟踪最近 100 次一致性
+        if use_classifier:
+            from agent.classifier import IntentClassifier
+            self.classifier = IntentClassifier()
+            if not self.classifier.load():
+                print(f"[CLASSIFIER] No trained model found at {self.classifier.model_path}")
+                print(f"[CLASSIFIER] Run tools/train_classifier.py first")
+                self.use_classifier = False
+
+    def plan_with_classifier(self, instruction: str, wsg: WorldStateGraph
+                              ) -> Optional[list[SubGoal]]:
+        """分类器优先（每类独立阈值），LLM 兜底。"""
+        if not self.classifier or not self.use_classifier:
+            return None
+
+        from agent.classifier import CLASS_THRESHOLDS
+
+        pred = self.classifier.predict(instruction)
+        intent_name = pred['intent_name']
+        threshold = CLASS_THRESHOLDS.get(intent_name, 0.8)
+
+        if pred['confidence'] < threshold:
+            print(f"  [CLASSIFIER] {intent_name} conf={pred['confidence']:.2f} < threshold={threshold} -> LLM fallback")
+            return None
+
+        slots = pred['slots']
+        print(f"  [CLASSIFIER] intent={intent_name} conf={pred['confidence']:.2f} slots={slots} (threshold={threshold})")
+
+        # 映射到 L3 模板 → 具体值
+        if intent_name == 'binary_arithmetic':
+            a = slots.get('A', '0')
+            b = slots.get('B', '0')
+            op = '?'
+            for v in ['+','-','*','/']:
+                if v in instruction:
+                    op = v
+                    break
+            values = list(a) + [op] + list(b) + ['=']
+        elif intent_name == 'text_input':
+            text = slots.get('VALUE', '')
+            values = ['text_area', f'type:{text}']
+        else:
+            return None
+
+        return _values_to_plan(values, wsg)
 
     def generate(self, instruction: str, available_values: str) -> Optional[str]:
         prompt = (
@@ -251,7 +300,12 @@ class Planner:
 
     def plan(self, instruction: str, wsg: WorldStateGraph
              ) -> Optional[list[SubGoal]]:
-        # Dynamically extract button values from WSG (buttons only)
+        # Phase 5: 影子模式 — 分类器优先尝试
+        classifier_plan = self.plan_with_classifier(instruction, wsg)
+        if classifier_plan is not None:
+            return classifier_plan
+
+        # LLM 兜底
         cn_rev = {'零':'0','一':'1','二':'2','三':'3','四':'4','五':'5',
                   '六':'6','七':'7','八':'8','九':'9','加':'+','减':'-',
                   '乘以':'*','除以':'/','等于':'='}

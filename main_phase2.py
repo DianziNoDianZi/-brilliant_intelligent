@@ -36,6 +36,8 @@ def build_parser():
                    help="Training epochs per experience (default: 3)")
     p.add_argument("--dual", action="store_true",
                    help="Dual-loop mode: fast loop caches skills, avoids LLM for repeated tasks")
+    p.add_argument("--classifier", action="store_true",
+                   help="Phase 5: use intent classifier instead of LLM (shadow mode)")
     return p
 
 
@@ -151,10 +153,13 @@ def main():
             print(f"\n[2] Fast loop (cached skill) → {fast_values}")
 
     # Create planner for both paths (needed for validation)
-    planner = Planner(model=args.llm)
+    planner = Planner(model=args.llm, use_classifier=args.classifier)
 
     if not used_fast_path:
-        print(f"\n[2] Calling LLM ({args.llm})...")
+        if args.classifier and planner.use_classifier:
+            print(f"\n[2] Classifier + LLM fallback...")
+        else:
+            print(f"\n[2] Calling LLM ({args.llm})...")
         plan = planner.plan(args.instruction, wsg)
 
     if plan is None:
@@ -214,6 +219,12 @@ def main():
             # Plain execution
             success, step_results = executor.execute_plan(final_plan, wsg, env)
             _report_execution_result(success, step_results, final_plan, env, wsg)
+
+            # Intent logging for Phase 5 classifier training
+            from agent.intent_log import log_execution
+            exec_vals = plan_to_values(final_plan, wsg) if success else None
+            if exec_vals:
+                log_execution(args.instruction, exec_vals, success=success)
 
             # Dual-loop: record success for skill compilation
             if success and args.dual and fast_loop:

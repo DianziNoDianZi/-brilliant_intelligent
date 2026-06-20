@@ -5,9 +5,9 @@
 ## 项目概况
 
 ```
-Phase 1          Phase 1.5       Phase 2           Phase 3            Phase 3.5          Phase 4
-网格好奇心闭环    视觉+系综       桌面UI理解         双回路骨架         技能生长+内模拟     层级记忆
-                 不确定性分解     LLM规划+执行       快慢回路分离       跨应用泛化         跨应用迁移
+Phase 1          Phase 1.5       Phase 2           Phase 3            Phase 3.5          Phase 4            Phase 5
+网格好奇心闭环    视觉+系综       桌面UI理解         双回路骨架         技能生长+内模拟     层级记忆           自主意图理解
+                 不确定性分解     LLM规划+执行       快慢回路分离       跨应用泛化         跨应用迁移         分类器替代LLM
 ```
 
 ## 快速开始
@@ -16,7 +16,7 @@ Phase 1          Phase 1.5       Phase 2           Phase 3            Phase 3.5 
 
 - Python 3.12+（推荐 3.12 以获得 CUDA 支持）
 - NVIDIA GPU 6GB+（可选，用于加速）
-- Ollama + Qwen-2.5-7B（用于 LLM 规划）
+- Ollama + Qwen-2.5-7B（可选，Phase 5 分类器可部分替代）
 
 ### 安装
 
@@ -32,10 +32,7 @@ pip install -r requirements.txt
 # 3. 安装 Phase 2 桌面依赖
 pip install -r requirements_phase2.txt
 
-# 4. 安装 CUDA PyTorch（可选，GPU 加速）
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
-
-# 5. 启动 Ollama 并拉取模型
+# 4. 启动 Ollama 并拉取模型（可选）
 ollama pull qwen2.5:7b
 ollama serve
 ```
@@ -48,47 +45,51 @@ ollama serve
 python main.py                    # 默认 500 episode，可视化
 ```
 
-智能体在网格世界中自主探索，好奇心驱动交互。
-
 ### Phase 2 — 桌面理解 + LLM 规划
 
 **计算器：**
 ```bash
-# 预演模式（默认）
-python main_phase2.py "calculate 3+4"
-
-# 真实执行
-python main_phase2.py "calculate 3+4" --execute
-
-# 快回路模式（3次后技能编译）
-python main_phase2.py "calculate 7+4" --execute --dual
+python main_phase2.py "calculate 3+4"              # 预演
+python main_phase2.py "calculate 3+4" --execute     # 执行
+python main_phase2.py "calculate 7+4" --dual        # 快回路模式
 ```
 
 **记事本：**
 ```bash
 python main_phase2.py "type Hello" --app notepad --execute
-python main_phase2.py "type World" --app notepad --dual --execute
+python main_phase2.py "type World" --app notepad --dual
 ```
 
-### Phase 3.5 — 内模拟 + 技能生成
+### Phase 5 — 分类器模式（替代 LLM）
 
+**训练分类器（先积累数据再训练）：**
 ```bash
-# 带内模拟训练
-python main_phase2.py "calculate 7+4" --execute --train
+# 积累数据（每次成功执行自动记录）
+python main_phase2.py "calculate 3+4" --execute
+python main_phase2.py "type Hello" --app notepad --execute
 
-# 批量生成技能（22个任务，全部在想象中完成）
-python tools/batch_generate.py
+# 训练
+python tools/train_classifier.py
 
-# 泛化验证
-python tools/generalization_test.py
-python tools/generalization_boundary.py
+# 评估
+python tools/shadow_eval.py --quick
 ```
 
-### Phase 4 — 层级记忆 + 跨应用迁移
+**上线分类器：**
+```bash
+# 加 --classifier，分类器优先，低置信自动 fallback 到 LLM
+python main_phase2.py "calculate 3+4" --execute --classifier
+python main_phase2.py "type Hello" --app notepad --execute --classifier
+```
+
+### 批量与评估
 
 ```bash
-# 跨应用迁移验证（记事本技能自动适配到 WordPad）
-python tools/cross_app_migration.py wordpad "type Hello World"
+python tools/batch_generate.py              # 批量生成技能
+python tools/quality_check.py               # 质量抽检
+python tools/generalization_test.py         # 泛化验证
+python tools/generalization_boundary.py     # 泛化边界测试
+python tools/cross_app_migration.py wordpad "type Hello"  # 跨应用迁移
 ```
 
 ## 项目结构
@@ -96,7 +97,7 @@ python tools/cross_app_migration.py wordpad "type Hello World"
 ```
 briliant_intelligent/
 ├── main.py                    # Phase 1 入口
-├── main_phase2.py             # Phase 2/3/4 入口
+├── main_phase2.py             # Phase 2-5 入口
 ├── config.py                  # 超参数
 ├── environment/
 │   ├── grid_world.py          # 网格世界环境
@@ -108,7 +109,9 @@ briliant_intelligent/
 │   ├── intrinsic_reward.py    # 好奇心奖励 + 不确定性分解
 │   ├── wsg.py                 # 世界状态图谱
 │   ├── wsg_encoder.py         # WSG → 特征向量
-│   ├── planner.py             # LLM 规划器 (Qwen-2.5)
+│   ├── planner.py             # LLM 规划器 + 分类器影子模式
+│   ├── classifier.py          # Phase 5: 意图分类器 (MLP on BoW)
+│   ├── intent_log.py          # 意图日志自动记录
 │   ├── validator.py           # 计划校验 + 执行验证
 │   ├── executor.py            # 动作执行 (PyAutoGUI)
 │   ├── simulator.py           # 内模拟引擎
@@ -129,15 +132,22 @@ briliant_intelligent/
 │   ├── eval_world_model.py    # 世界模型评估
 │   ├── collect_wsg_data.py    # WSG 数据采集
 │   ├── batch_generate.py      # 批量技能生成
-│   └── cross_app_migration.py # 跨应用迁移测试
+│   ├── cross_app_migration.py # 跨应用迁移测试
+│   ├── train_classifier.py    # Phase 5: 训练分类器
+│   └── shadow_eval.py         # Phase 5: 影子模式评估
 ├── tasks/
-│   └── calculator_tasks.json  # 批量生成任务列表
+│   ├── calculator_tasks.json  # 批量生成任务列表
+│   └── shadow_eval.json       # 影子模式评估指令集
 ├── designs/
 │   └── hierarchical_memory.md # 层级记忆设计文档
+├── data/                      # 自动生成的训练数据
+│   ├── intent_log.jsonl       # 指令→意图映射日志
+│   └── classifier.pkl         # 训练好的分类器
 ├── visualization/
 │   └── renderer.py            # 可视化
 ├── problems.md                # 开发问题记录
 ├── PHASE_SUMMARY.md           # 阶段总结
+├── phase5.md                  # Phase 5 设计文档
 └── requirements*.txt          # 依赖清单
 ```
 
@@ -160,6 +170,12 @@ briliant_intelligent/
 - **L3 抽象模板**：5 个跨应用通用操作模式，从 L2 自动提取
 - 迁移验证：记事本 type_text → WordPad 自动适配
 
+### Phase 5: 自主意图理解
+- 极简分类器（MLP on Bag-of-Words, <5000 参数）
+- 从系统日志自动积累训练数据，无需人工标注
+- 每类独立置信度阈值，低置信自动 fallback 到 LLM
+- ~70% 日常指令不再需要外部 LLM
+
 ## 验证结果
 
 | 测试 | 结果 |
@@ -172,3 +188,6 @@ briliant_intelligent/
 | 世界模型 WSG 预测 MSE | < 0.01 |
 | 内模拟置信度 | 0.93+ |
 | L3 抽象模板 | 5 个 |
+| 分类器 binary_arithmetic 准确率 | 95% ✅ |
+| 分类器 text_input 准确率 | 100% ✅ |
+| LLM 替代率 | ~70%（日常指令）|
